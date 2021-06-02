@@ -38,7 +38,6 @@ pub fn hencode(file: String) -> Result<(), Box<dyn Error>> {
     for byte in raw.iter() {
         encoded.append_sym(map.get(byte).ok_or("byte vector creation failed")?);
     }
-    println!("{}", encoded);
     file.write(&[9u8 - encoded.bitpos as u8])?;
     file.write_all(&encoded.bytes)?;
     file.flush()?;
