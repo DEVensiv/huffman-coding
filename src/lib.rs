@@ -47,11 +47,11 @@ pub fn hencode(file: String) -> Result<(), Box<dyn Error>> {
 
 pub fn hdecode(file: String) -> Result<(), Box<dyn Error>> {
     let mut source = OpenOptions::new().read(true).open(&file)?;
+    let tree = Tree::try_load(&mut source)?;
     let mut target = OpenOptions::new()
         .create(true)
         .write(true)
         .open(&file[..file.len() - 4])?;
-    let tree = Tree::try_load(&mut source)?;
     let mut padding = [0u8];
     source.read_exact(&mut padding)?;
     let padding = padding[0] as usize;
