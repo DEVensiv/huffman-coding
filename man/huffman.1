@@ -1,0 +1,50 @@
+.TH HUFFMAN 1
+.SH NAME
+huffman \- encodes or decodes files by generating the fitting huffman tree
+.SH SYNOPSIS
+.B huffman
+.RB [ \-\-help ]
+.I file
+.RB [ \-d ]
+.SH DESCRIPTION
+.B huffman
+builds an optimal huffman tree for a file's data, encoding it using the created tree.
+The tree is prepended to the encoded file.
+.PP
+.B huffman
+will try to create or overwrite the file with the name
+.IB file .rxc
+to store the encoded data.
+If an error is encountered writing to this file the process will exit with a non zero status code.
+.PP
+If the
+.B \-d
+option is supplied the
+.I file
+will be used as the base for the decoding process.
+If
+.I file
+is not a valid encoded file the process will exit with a non zero status code.
+.PP
+.B huffman
+will try to create or overwrite the file for writing the decoded data.
+The filename for the decoded file created by removing the last 4 characters from
+.I file
+.
+If an error is encountered writing to this file the process will exit with a non zero status code.
+.PP
+When
+.B huffman is used on a
+.I file
+once and then used on the resulting file of that operation using the
+.B \-d
+option, the original
+.I file
+will be restored to the original that was used in the encoding process.
+.SH OPTIONS
+.TP
+.BR \-d
+enables decoding mode for file
+.PP
+.BR \-\-help
+Prints a simple syntax information string
