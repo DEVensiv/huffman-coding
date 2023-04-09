@@ -6,7 +6,7 @@ use std::process::exit;
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = env::args().skip(1);
     if let Some(file) = args.next() {
-        if file == "help" {
+        if file == "--help" {
             println!("Usage: huffmann <file> [-d]");
             return Ok(());
         }
