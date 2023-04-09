@@ -11,7 +11,7 @@ pub enum Tree {
 }
 
 pub enum Walker<'a> {
-    Next(&'a Box<Tree>),
+    Next(&'a Tree),
     End(u8),
     No,
 }
@@ -72,32 +72,32 @@ impl Tree {
     pub fn store(&self, file: &mut fs::File) -> Result<(), Box<dyn Error>> {
         match self {
             Tree::Leaf(key, _) => {
-                file.write(&[1, *key])?;
+                file.write_all(&[1, *key])?;
             }
             Tree::Node(left, right, _) => {
-                file.write(&[0])?;
+                assert_eq!(file.write(&[0])?, 1);
                 left.store(file)?;
                 right.store(file)?;
             }
             Tree::Root(left, right) => {
-                file.write(b"----- rxh tree start V1-----\n")?;
-                file.write(&[255])?;
+                file.write_all(b"----- rxh tree start V1-----\n")?;
+                assert_eq!(file.write(&[255])?, 1);
                 left.store(file)?;
                 right.store(file)?;
-                file.write(b"\n----- rxh tree end V1-----\n")?;
+                file.write_all(b"\n----- rxh tree end V1-----\n")?;
             }
         }
         Ok(())
     }
 
-    pub fn try_load(mut file: &mut fs::File) -> Result<Tree, Box<dyn Error>> {
+    pub fn try_load(file: &mut fs::File) -> Result<Tree, Box<dyn Error>> {
         let mut buffer = [0u8; 29]; //header start is 29 bytes
         file.read_exact(&mut buffer)?;
         if &buffer != b"----- rxh tree start V1-----\n" {
             return Err("file does not contain a V1 rxh tree start signature")?;
         }
 
-        let result = Tree::load(&mut file);
+        let result = Tree::load(file);
 
         let mut buffer = [0u8; 28]; //header end is 28 bytes
         file.read_exact(&mut buffer)?;
@@ -174,7 +174,7 @@ impl Tree {
                 right = freq.remove(bigger.0);
                 left = freq.remove(smaller.0);
             }
-            if freq.len() == 0 {
+            if freq.is_empty() {
                 return Tree::Root(Box::new(left), Box::new(right));
             }
 

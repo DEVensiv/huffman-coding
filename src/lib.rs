@@ -38,7 +38,7 @@ pub fn hencode(file: String) -> Result<(), Box<dyn Error>> {
     for byte in raw.iter() {
         encoded.append_sym(map.get(byte).ok_or("byte vector creation failed")?);
     }
-    file.write(&[9u8 - encoded.bitpos as u8])?;
+    assert_eq!(file.write(&[9u8 - encoded.bitpos as u8])?, 1);
     file.write_all(&encoded.bytes)?;
     file.flush()?;
 
@@ -55,13 +55,10 @@ pub fn hdecode(file: String) -> Result<(), Box<dyn Error>> {
     let mut padding = [0u8];
     source.read_exact(&mut padding)?;
     let padding = padding[0] as usize;
-    let bits = source
-        .bytes()
-        .map(|b| match b {
-            Ok(byte) => bitutils::mk_bits(byte),
-            Err(_) => Vec::new(),
-        })
-        .flatten();
+    let bits = source.bytes().flat_map(|b| match b {
+        Ok(byte) => bitutils::mk_bits(byte),
+        Err(_) => Vec::new(),
+    });
     let mut node = Walker::No;
     let mut ring_buffer = VecDeque::with_capacity(padding);
     for bit in bits {
@@ -74,14 +71,14 @@ pub fn hdecode(file: String) -> Result<(), Box<dyn Error>> {
             Walker::No => tree.walk(bit),
             Walker::Next(node) => node.walk(bit),
             Walker::End(key) => {
-                target.write(&[key])?;
+                assert_eq!(target.write(&[key])?, 1);
                 tree.walk(bit)
             }
         };
     }
     match node {
         Walker::End(key) => {
-            target.write(&[key])?;
+            assert_eq!(target.write(&[key])?, 1);
         }
         _ => Err("decoding failed")?,
     }
