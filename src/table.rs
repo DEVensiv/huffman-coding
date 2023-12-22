@@ -178,4 +178,3 @@ impl Display for Table {
         Ok(())
     }
 }
-
