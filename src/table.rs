@@ -113,7 +113,7 @@ fn fill_subtable(table: &mut Table, subtable: &SubtableSize, conversion: Convers
     for pos in index..index + inflation {
         table.table[pos] = Entry::Map {
             byte: conversion.byte,
-            bitlen: 8 + conversion.representation.bitpos,
+            bitlen: conversion.representation.bitpos,
         }
     }
 }
