@@ -1,5 +1,5 @@
 pub mod bitutils;
-pub mod tree;
+mod tree;
 use bitutils::Symbol;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -8,6 +8,11 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use tree::*;
+
+use crate::table::Table;
+
+#[cfg(feature = "table")]
+mod table;
 
 pub fn hencode(file: String) -> Result<(), Box<dyn Error>> {
     let raw = fs::read(&file)?;
