@@ -1,4 +1,5 @@
 pub mod bitutils;
+pub mod window;
 mod tree;
 use bitutils::Symbol;
 use std::collections::HashMap;
