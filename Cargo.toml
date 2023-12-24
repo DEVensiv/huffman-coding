@@ -10,9 +10,14 @@ edition = "2021"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
+tempfile = "3.8.1"
 
 [[bench]]
 name = "encoding"
+harness = false
+
+[[bench]]
+name = "decoding"
 harness = false
 
 [features]
