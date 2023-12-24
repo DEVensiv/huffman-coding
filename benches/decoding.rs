@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::{fs::OpenOptions, io::BufReader};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use huffman::hdecode;
@@ -8,11 +8,12 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("decode", |bencher| {
         bencher.iter(|| {
             let mut out = tempfile().expect("temfile err");
-            let mut raw = OpenOptions::new()
+            let raw = OpenOptions::new()
                 .read(true)
                 .open("flake.lock.rxc")
                 .expect("file err");
-            hdecode(&mut raw, &mut out).expect("io err");
+            let mut reader = BufReader::new(raw);
+            hdecode(&mut reader, &mut out).expect("io err");
         })
     });
 }

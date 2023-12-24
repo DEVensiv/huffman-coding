@@ -1,13 +1,12 @@
 pub mod bitutils;
+mod tree;
 #[cfg(feature = "window")]
 pub mod window;
-mod tree;
 use bitutils::Symbol;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::error::Error;
-use std::fs;
-use std::fs::OpenOptions;
+use std::io::BufWriter;
 use std::io::prelude::*;
 use tree::*;
 
@@ -51,8 +50,8 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
     Ok(())
 }
 
-pub fn hdecode(mut input: impl Read, mut output: impl Write) -> Result<(), Box<dyn Error>> {
-    //let mut input = OpenOptions::new().read(true).open(&input)?;
+pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dyn Error>> {
+    let mut output = BufWriter::new(output);
     let tree = Tree::try_load(&mut input)?;
     let mut padding = [0u8];
     input.read_exact(&mut padding)?;

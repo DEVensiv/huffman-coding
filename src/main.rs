@@ -2,6 +2,7 @@ use huffman::*;
 use std::env;
 use std::error::Error;
 use std::fs::OpenOptions;
+use std::io::BufReader;
 use std::process::exit;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -20,12 +21,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .write(true)
                     .open(&arg[..arg.len() - 4])?;
 
+                let mut input = BufReader::new(input);
                 hdecode(&mut input, &mut output)?;
                 return Ok(());
             }
         }
 
-        let mut output = OpenOptions::new().create(true).write(true).open(format!("{}.rxc", arg))?;
+        let mut output = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(format!("{}.rxc", arg))?;
         hencode(&mut input, &mut output)?;
         Ok(())
     } else {
