@@ -40,7 +40,8 @@ where
     /// Attemts to load more bits from the underlying data source if applicable
     ///
     /// # Returns
-    /// This method returns `true` when the underlying data source has reached EOF.
+    /// This method returns `true` if the number of initialized bits drops below 9
+    /// AND the underlying data source has reached EOF.
     ///
     /// [`show`]: BitWindow::show
     pub fn consume(&mut self, amt: usize) -> Result<bool, io::Error> {
@@ -174,5 +175,30 @@ mod tests {
         reader.consume(5).expect("io err");
         let bits = reader.show_exact(5);
         assert_eq!(bits, 0b00001010);
+    }
+
+    #[test]
+    fn consume_ret_not_eof() {
+        let data = [0b10011010; 2];
+        let data: BufReader<&[u8]> = BufReader::new(&data);
+        let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
+
+        let eof = reader.consume(5).expect("io err");
+        assert!(!eof);
+        assert!(reader.initialized() >= 8);
+    }
+
+    #[test]
+    fn consume_ret_eof() {
+        let data = [0b10011010; 2];
+        let data: BufReader<&[u8]> = BufReader::new(&data);
+        let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
+
+        let eof = reader.consume(8).expect("io err");
+        assert!(!eof);
+        assert!(reader.initialized() >= 8);
+        let eof = reader.consume(1).expect("io err");
+        assert!(eof);
+        assert!(reader.initialized() == 7);
     }
 }
