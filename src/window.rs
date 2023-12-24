@@ -19,7 +19,7 @@ where
     /// shows the current 8bit window
     ///
     /// padded on the right with 0s if there was insufficient data to fill the window
-    pub fn show(self) -> u8 {
+    pub fn show(&self) -> u8 {
         (self.current >> 8) as u8
     }
 
@@ -28,7 +28,7 @@ where
     /// padded on the right with 0s if there was insufficient data to fill the window
     ///
     /// there are `8 - amt` 0 bits before the data
-    pub fn show_exact(self, amt: usize) -> u8 {
+    pub fn show_exact(&self, amt: usize) -> u8 {
         (self.current >> (16 - amt)) as u8
     }
 
