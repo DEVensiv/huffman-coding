@@ -9,5 +9,6 @@ edition = "2021"
 [dependencies]
 
 [features]
-table = []
+table = ["window"]
+window = []
 

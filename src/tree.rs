@@ -1,7 +1,6 @@
 use crate::bitutils::Symbol;
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs;
 use std::io::prelude::*;
 
 pub enum Tree {
@@ -69,7 +68,7 @@ impl Tree {
         }
     }
 
-    pub fn store(&self, file: &mut fs::File) -> Result<(), Box<dyn Error>> {
+    pub fn store(&self, file: &mut impl Write) -> Result<(), Box<dyn Error>> {
         match self {
             Tree::Leaf(key, _) => {
                 file.write_all(&[1, *key])?;
@@ -90,40 +89,40 @@ impl Tree {
         Ok(())
     }
 
-    pub fn try_load(file: &mut fs::File) -> Result<Tree, Box<dyn Error>> {
+    pub fn try_load(input: &mut impl Read) -> Result<Tree, Box<dyn Error>> {
         let mut buffer = [0u8; 29]; //header start is 29 bytes
-        file.read_exact(&mut buffer)?;
+        input.read_exact(&mut buffer)?;
         if &buffer != b"----- rxh tree start V1-----\n" {
             return Err("file does not contain a V1 rxh tree start signature")?;
         }
 
-        let result = Tree::load(file);
+        let result = Tree::load(input);
 
         let mut buffer = [0u8; 28]; //header end is 28 bytes
-        file.read_exact(&mut buffer)?;
+        input.read_exact(&mut buffer)?;
         if &buffer != b"\n----- rxh tree end V1-----\n" {
             return Err("file does not contain a V1 rxh tree end signature")?;
         }
         result
     }
 
-    fn load(file: &mut fs::File) -> Result<Tree, Box<dyn Error>> {
+    fn load(input: &mut impl Read) -> Result<Tree, Box<dyn Error>> {
         let mut buffer = [0u8];
-        file.read_exact(&mut buffer)?;
+        input.read_exact(&mut buffer)?;
         match buffer[0] {
             0 => Ok(Tree::Node(
-                Box::new(Tree::load(file)?),
-                Box::new(Tree::load(file)?),
+                Box::new(Tree::load(input)?),
+                Box::new(Tree::load(input)?),
                 0,
             )),
             1 => {
                 let mut buffer = [0u8];
-                file.read_exact(&mut buffer)?;
+                input.read_exact(&mut buffer)?;
                 Ok(Tree::Leaf(buffer[0], 0))
             }
             255 => Ok(Tree::Root(
-                Box::new(Tree::load(file)?),
-                Box::new(Tree::load(file)?),
+                Box::new(Tree::load(input)?),
+                Box::new(Tree::load(input)?),
             )),
             _ => Err("invalid key")?,
         }
