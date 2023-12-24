@@ -58,6 +58,11 @@ where
     }
 
     /// This method returns the ammount of initialized bits in the internal buffer
+    /// 
+    /// If this method returns `val < 8` this implied EOF of underlying source since
+    /// [`consume`] will always fill up when consumed below 8
+    /// 
+    /// [`consume`]: BitWindow::consume
     pub fn initialized(&self) -> usize {
         self.initialized
     }
@@ -168,6 +173,20 @@ mod tests {
         reader.consume(6).expect("io err");
         let bits = reader.show();
         assert_eq!(bits, 0b11010100);
+    }
+
+    #[test]
+    fn consume_last() {
+        let data = [0b10011010; 2];
+        let data: BufReader<&[u8]> = BufReader::new(&data);
+        let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
+
+        reader.consume(5).expect("io err");
+        reader.consume(6).expect("io err");
+        reader.consume(5).expect("io err");
+        let bits = reader.show();
+        assert_eq!(bits, 0);
+        assert_eq!(reader.initialized, 0);
     }
 
     #[test]
