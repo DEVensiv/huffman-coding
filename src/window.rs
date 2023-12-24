@@ -1,4 +1,4 @@
-use std::io::{self, BufRead, BufReader, Error};
+use std::io::{self, BufRead, Error};
 
 #[derive(PartialEq, Debug)]
 pub enum Estimate {
@@ -6,6 +6,8 @@ pub enum Estimate {
     AtLeast(usize),
 }
 
+/// When constructed via [`From<BufRead>`] will hallucinate a 0 byte if the data source
+/// is of lenght 0.
 pub struct BitWindow<R> {
     data: R,
     initialized: usize, // number of bits in current that are populated (left to right) -> 0b11100101_xxxxxxxx initialized = 8
@@ -120,6 +122,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::io::BufReader;
+
     use super::*;
 
     #[test]
