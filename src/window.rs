@@ -54,6 +54,11 @@ where
         Ok(false)
     }
 
+    /// This method returns the ammount of initialized bits in the internal buffer
+    pub fn initialized(&self) -> usize {
+        self.initialized
+    }
+
     /// loads another byte into `current`
     ///
     /// # Safety
