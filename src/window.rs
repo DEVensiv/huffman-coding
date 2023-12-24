@@ -108,6 +108,7 @@ where
             .fill_buf()
             .and_then(|buf| buf.first().map_or(Err(Error::other("")), Ok))
             .unwrap_or(&0);
+        value.consume(1);
         BitWindow {
             data: value,
             current: (initial as u16) << 8,
