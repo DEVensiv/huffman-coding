@@ -6,15 +6,15 @@ pub enum Estimate {
     AtLeast(usize),
 }
 
-pub struct BitWindow<T> {
-    data: BufReader<T>,
+pub struct BitWindow<R> {
+    data: R,
     initialized: usize, // number of bits in current that are populated (left to right) -> 0b11100101_xxxxxxxx initialized = 8
     current: u16,
 }
 
-impl<T> BitWindow<T>
+impl<R> BitWindow<R>
 where
-    T: BufRead,
+    R: BufRead,
 {
     /// shows the current 8bit window
     ///
@@ -94,20 +94,11 @@ where
     }
 }
 
-impl<T> From<T> for BitWindow<T>
+impl<R> From<R> for BitWindow<R>
 where
-    T: std::io::Read,
+    R: BufRead,
 {
-    fn from(value: T) -> Self {
-        BufReader::new(value).into()
-    }
-}
-
-impl<T> From<BufReader<T>> for BitWindow<T>
-where
-    T: std::io::Read,
-{
-    fn from(mut value: BufReader<T>) -> Self {
+    fn from(mut value: R) -> Self {
         let &initial = value
             .fill_buf()
             .and_then(|buf| buf.first().map_or(Err(Error::other("")), Ok))
