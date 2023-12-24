@@ -6,8 +6,8 @@ use bitutils::Symbol;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::error::Error;
-use std::io::BufWriter;
 use std::io::prelude::*;
+use std::io::BufWriter;
 use tree::*;
 
 #[cfg(feature = "table")]
