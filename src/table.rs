@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::Index};
 
 use crate::{bitutils::Symbol, tree::Tree};
 
@@ -71,6 +71,14 @@ impl Table {
         }
 
         Some(table)
+    }
+}
+
+impl Index<usize> for Table {
+    type Output = Entry;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.table.index(index)
     }
 }
 
