@@ -12,7 +12,6 @@ pub enum Tree {
 pub enum Walker<'a> {
     Next(&'a Tree),
     End(u8),
-    No,
 }
 
 impl Tree {

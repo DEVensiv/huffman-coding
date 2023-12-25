@@ -64,9 +64,6 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
     window.consume(1)?;
     loop {
         walker = match walker {
-            Walker::No => {
-                todo!("remove variant");
-            }
             Walker::Next(node) => {
                 let bit = window.show_exact(1) != 0;
                 // check if smaller then padding since if its equal to padding `bit` is still data
