@@ -45,10 +45,21 @@ where
     /// This method returns `true` if the number of initialized bits drops below 9
     /// AND the underlying data source has reached EOF.
     ///
+    /// # Errors
+    /// This method returns an I/O error if:
+    /// - the underlying reader did so while loading additional bits
+    /// - there were less bits present then were tried to consume
+    ///
+    ///
     /// [`show`]: BitWindow::show
     pub fn consume(&mut self, amt: usize) -> Result<bool, io::Error> {
-        debug_assert!(amt <= 8);
-        debug_assert!(amt <= self.initialized);
+        if amt > self.initialized {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Tried consuming more bits then there are",
+            ));
+        }
+
         self.current <<= amt;
         self.initialized -= amt;
         if self.initialized <= 8 {
@@ -58,10 +69,10 @@ where
     }
 
     /// This method returns the ammount of initialized bits in the internal buffer
-    /// 
+    ///
     /// If this method returns `val < 8` this implied EOF of underlying source since
     /// [`consume`] will always fill up when consumed below 8
-    /// 
+    ///
     /// [`consume`]: BitWindow::consume
     pub fn initialized(&self) -> usize {
         self.initialized
