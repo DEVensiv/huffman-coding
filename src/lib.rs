@@ -1,14 +1,14 @@
 pub mod bitutils;
 mod tree;
-#[cfg(feature = "window")]
 pub mod window;
 use bitutils::Symbol;
 use std::collections::HashMap;
-use std::collections::VecDeque;
 use std::error::Error;
+use std::io;
 use std::io::prelude::*;
 use std::io::BufWriter;
 use tree::*;
+use window::BitWindow;
 
 #[cfg(feature = "table")]
 mod table;
@@ -43,7 +43,7 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
     for byte in raw.iter() {
         encoded.append_sym(map.get(byte).ok_or("byte vector creation failed")?);
     }
-    assert_eq!(output.write(&[9u8 - encoded.bitpos as u8])?, 1);
+    assert_eq!(output.write(&[8u8 - encoded.bitpos as u8])?, 1);
     output.write_all(&encoded.bytes)?;
     output.flush()?;
 
@@ -52,39 +52,47 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
 
 pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dyn Error>> {
     let mut output = BufWriter::new(output);
-    let tree = Tree::try_load(&mut input)?;
+    let root = Tree::try_load(&mut input)?;
     let mut padding = [0u8];
     input.read_exact(&mut padding)?;
+    if input.fill_buf()?.is_empty() {
+        return Ok(());
+    }
     let padding = padding[0] as usize;
-    let bits = input.bytes().flat_map(|b| match b {
-        Ok(byte) => bitutils::mk_bits(byte),
-        Err(_) => Vec::new(),
-    });
-    let mut node = Walker::No;
-    let mut ring_buffer = VecDeque::with_capacity(padding);
-    for bit in bits {
-        ring_buffer.push_back(bit);
-        if ring_buffer.len() != padding {
-            continue;
-        }
-        let bit = ring_buffer.pop_front().unwrap();
-        node = match node {
-            Walker::No => tree.walk(bit),
-            Walker::Next(node) => node.walk(bit),
+    let mut window: BitWindow<_> = input.into();
+    let mut walker = root.walk(window.show_exact(1) != 0);
+    window.consume(1)?;
+    loop {
+        walker = match walker {
+            Walker::No => {
+                todo!("remove variant");
+            }
+            Walker::Next(node) => {
+                let bit = window.show_exact(1) != 0;
+                // check if smaller then padding since if its equal to padding `bit` is still data
+                if window.consume(1)? && window.initialized() < padding {
+                    return Err(Box::new(io::Error::other(
+                        "Read into padding, invalid encoding",
+                    )));
+                }
+                node.walk(bit)
+            }
             Walker::End(key) => {
-                assert_eq!(output.write(&[key])?, 1);
-                tree.walk(bit)
+                debug_assert_eq!(output.write(&[key])?, 1);
+                // if `initialized == padding` that means EOF and no more bits (since padding < 8)
+                if window.initialized() == padding {
+                    output.flush()?;
+                    return Ok(());
+                }
+                // read another bit if we are not at EOF
+                let bit = window.show_exact(1) != 0;
+                // dont need to check for "read into padding" since we know there is at least one
+                // more bit because of the EOF check above
+                window.consume(1)?;
+                root.walk(bit)
             }
         };
     }
-    match node {
-        Walker::End(key) => {
-            assert_eq!(output.write(&[key])?, 1);
-        }
-        _ => Err("decoding failed")?,
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
