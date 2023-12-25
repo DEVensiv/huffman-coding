@@ -1,20 +1,17 @@
 pub mod bitutils;
+mod table;
 mod tree;
 pub mod window;
-use bitutils::Symbol;
+
+use crate::bitutils::Symbol;
+use crate::table::Table;
+use crate::tree::*;
+use crate::window::BitWindow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io;
 use std::io::prelude::*;
 use std::io::BufWriter;
-use tree::*;
-use window::BitWindow;
-
-#[cfg(feature = "table")]
-mod table;
-
-#[cfg(feature = "table")]
-use crate::table::Table;
 
 pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
     let mut raw = Vec::new();
@@ -53,6 +50,7 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
 pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dyn Error>> {
     let mut output = BufWriter::new(output);
     let root = Tree::try_load(&mut input)?;
+    let table = Table::from_tree_root(&root).expect("root aint root");
     let mut padding = [0u8];
     input.read_exact(&mut padding)?;
     if input.fill_buf()?.is_empty() {
@@ -60,35 +58,43 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
     }
     let padding = padding[0] as usize;
     let mut window: BitWindow<_> = input.into();
-    let mut walker = root.walk(window.show_exact(1) != 0);
-    window.consume(1)?;
-    loop {
-        walker = match walker {
-            Walker::Next(node) => {
-                let bit = window.show_exact(1) != 0;
-                // check if smaller then padding since if its equal to padding `bit` is still data
-                if window.consume(1)? && window.initialized() < padding {
-                    return Err(Box::new(io::Error::other(
-                        "Read into padding, invalid encoding",
-                    )));
-                }
-                node.walk(bit)
-            }
-            Walker::End(key) => {
-                debug_assert_eq!(output.write(&[key])?, 1);
-                // if `initialized == padding` that means EOF and no more bits (since padding < 8)
-                if window.initialized() == padding {
-                    output.flush()?;
-                    return Ok(());
-                }
-                // read another bit if we are not at EOF
-                let bit = window.show_exact(1) != 0;
-                // dont need to check for "read into padding" since we know there is at least one
-                // more bit because of the EOF check above
-                window.consume(1)?;
-                root.walk(bit)
+    let consume_err_on_read_padding =
+        |window: &mut BitWindow<_>, bits: usize, padding: usize| -> Result<_, io::Error> {
+            if window.consume(bits)? && window.initialized() < padding {
+                Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Consuming {bits} overlapped with padding",
+                ))
+            } else {
+                Ok(())
             }
         };
+    loop {
+        let index = window.show() as usize;
+        let byte = match table[index] {
+            table::Entry::Map { byte, bitlen } => {
+                consume_err_on_read_padding(&mut window, bitlen, padding)?;
+                byte
+            }
+            table::Entry::Subtable { offset, bitdepth } => {
+                consume_err_on_read_padding(&mut window, 8, padding)?;
+                // handle subtable entry
+                let index = window.show_exact(bitdepth) as usize;
+                let entry = table[index + offset];
+                let table::Entry::Map { byte, bitlen } = entry else {
+                    unimplemented!("dont allow nested subtables");
+                };
+
+                consume_err_on_read_padding(&mut window, bitlen, padding)?;
+                byte
+            }
+        };
+
+        debug_assert_eq!(output.write(&[byte])?, 1);
+        if window.initialized() == padding {
+            output.flush()?;
+            return Ok(());
+        }
     }
 }
 

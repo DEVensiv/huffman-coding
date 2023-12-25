@@ -21,4 +21,3 @@ name = "decoding"
 harness = false
 
 [features]
-table = []
