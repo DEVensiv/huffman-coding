@@ -86,3 +86,53 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        error::Error,
+        fs::{self, OpenOptions},
+        io::{BufReader, Read, Seek},
+    };
+    use tempfile::tempfile;
+
+    use crate::{hdecode, hencode};
+    const RAW: &str = "flake.lock";
+    const CODED: &str = "flake.lock.rxc";
+
+    fn create_decoded() -> Result<(), Box<dyn Error>> {
+        let raw = OpenOptions::new().read(true).open(RAW)?;
+        let _ = fs::remove_file(CODED);
+        let mut out = OpenOptions::new().write(true).create(true).open(CODED)?;
+        let mut reader = BufReader::new(raw);
+        hencode(&mut reader, &mut out)
+    }
+
+    #[test]
+    fn decode() {
+        create_decoded().expect("encoding failed. cannot test decoding");
+
+        let mut out = tempfile().expect("temfile err");
+        let raw = OpenOptions::new().read(true).open(CODED).expect("file err");
+        let mut reader = BufReader::new(raw);
+        hdecode(&mut reader, &mut out).expect("io err");
+
+        out.seek(std::io::SeekFrom::Start(0))
+            .expect("could not seek tmpfile");
+        let mut raw = OpenOptions::new().read(true).open(RAW).expect("cant read");
+        let mut raw_data = Vec::new();
+        raw.read_to_end(&mut raw_data).expect("cant read");
+        let mut out_data = Vec::new();
+        out.read_to_end(&mut out_data).expect("cant read tmpfile");
+
+        assert_eq!(raw_data, out_data, "decoding yielded incorrect data");
+    }
+
+    #[test]
+    fn encode() {
+        let mut out = tempfile().expect("temfile err");
+        let raw = OpenOptions::new().read(true).open(RAW).expect("file err");
+        let mut reader = BufReader::new(raw);
+        hencode(&mut reader, &mut out).expect("io err");
+    }
+}
