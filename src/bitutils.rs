@@ -20,7 +20,7 @@ impl fmt::Display for Symbol {
 
 impl Symbol {
     pub fn append_bit(&mut self, bit: bool) {
-        if self.bytes.len() == 0 {
+        if self.bytes.is_empty() {
             self.bytes.push(0);
         }
         if self.bitpos == 8 {
@@ -61,7 +61,7 @@ impl Symbol {
 
     pub fn append_sym(&mut self, sym: &Symbol) {
         let mut byteindex = 0;
-        if self.bytes.len() == 0 {
+        if self.bytes.is_empty() {
             self.bytes.push(0);
         }
         while byteindex < sym.bytepos {
