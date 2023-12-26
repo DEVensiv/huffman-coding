@@ -1,6 +1,6 @@
 [package]
 name = "huffman"
-version = "0.1.0"
+version = "0.2.0" # remember to bump Tree::HEADER_*
 authors = ["devensiv <devensiv@devensiv.dev>"]
 edition = "2021"
 

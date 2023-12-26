@@ -4,6 +4,11 @@ use std::error::Error;
 use std::fmt::Display;
 use std::io::prelude::*;
 
+const HEADER_START: &[u8; 30] = b"----- rxh tree start V2 -----\n";
+const HEADER_END: &[u8; 29] = b"\n----- rxh tree end V2 -----\n";
+const INVALID_VERSION: &str = r#"file does not contain a valid rxh tree start signature.
+You may find a version of this program thats compatible with this file here: https://github.com/devensiv/huffman-coding"#;
+
 pub enum Tree {
     Root(Box<Tree>, Box<Tree>),
     Leaf(u8, usize),
@@ -55,29 +60,29 @@ impl Tree {
                 right.store(file)?;
             }
             Tree::Root(left, right) => {
-                file.write_all(b"----- rxh tree start V1-----\n")?;
+                file.write_all(HEADER_START)?;
                 assert_eq!(file.write(&[255])?, 1);
                 left.store(file)?;
                 right.store(file)?;
-                file.write_all(b"\n----- rxh tree end V1-----\n")?;
+                file.write_all(HEADER_END)?;
             }
         }
         Ok(())
     }
 
     pub fn try_load(input: &mut impl Read) -> Result<Tree, Box<dyn Error>> {
-        let mut buffer = [0u8; 29]; //header start is 29 bytes
+        let mut buffer = [0u8; HEADER_START.len()]; //header start is 29 bytes
         input.read_exact(&mut buffer)?;
-        if &buffer != b"----- rxh tree start V1-----\n" {
-            return Err("file does not contain a V1 rxh tree start signature")?;
+        if &buffer != HEADER_START {
+            return Err(INVALID_VERSION)?;
         }
 
         let result = Tree::load(input);
 
-        let mut buffer = [0u8; 28]; //header end is 28 bytes
+        let mut buffer = [0u8; HEADER_END.len()]; //header end is 28 bytes
         input.read_exact(&mut buffer)?;
-        if &buffer != b"\n----- rxh tree end V1-----\n" {
-            return Err("file does not contain a V1 rxh tree end signature")?;
+        if &buffer != HEADER_END {
+            return Err(INVALID_VERSION)?;
         }
         result
     }
