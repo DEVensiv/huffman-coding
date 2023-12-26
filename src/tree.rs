@@ -9,31 +9,7 @@ pub enum Tree {
     Node(Box<Tree>, Box<Tree>, usize),
 }
 
-pub enum Walker<'a> {
-    Next(&'a Tree),
-    End(u8),
-}
-
 impl Tree {
-    pub fn walk(&self, one: bool) -> Walker {
-        match self {
-            Tree::Root(left, right) | Tree::Node(left, right, _) => {
-                if one {
-                    match **right {
-                        Tree::Leaf(key, _) => Walker::End(key),
-                        _ => Walker::Next(right),
-                    }
-                } else {
-                    match **left {
-                        Tree::Leaf(key, _) => Walker::End(key),
-                        _ => Walker::Next(left),
-                    }
-                }
-            }
-            Tree::Leaf(key, _) => Walker::End(*key),
-        }
-    }
-
     fn fill_conversion_map(node: &Tree, mut sym: Symbol, map: &mut HashMap<u8, Symbol>) {
         match node {
             Tree::Root(left, right) | Tree::Node(left, right, _) => {

@@ -7,19 +7,6 @@ pub struct Symbol {
     pub bytepos: usize,
 }
 
-pub fn mk_bits(byte: u8) -> Vec<bool> {
-    let mut bits = Vec::with_capacity(8);
-    bits.push(byte & (0b10000000) != 0);
-    bits.push(byte & (0b01000000) != 0);
-    bits.push(byte & (0b00100000) != 0);
-    bits.push(byte & (0b00010000) != 0);
-    bits.push(byte & (0b00001000) != 0);
-    bits.push(byte & (0b00000100) != 0);
-    bits.push(byte & (0b00000010) != 0);
-    bits.push(byte & (0b00000001) != 0);
-    bits
-}
-
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(by:{}, bi:{}) [", self.bytepos, self.bitpos)?;
