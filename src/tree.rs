@@ -1,6 +1,7 @@
 use crate::bitutils::Symbol;
 use std::collections::HashMap;
 use std::error::Error;
+use std::fmt::Display;
 use std::io::prelude::*;
 
 pub enum Tree {
@@ -103,23 +104,6 @@ impl Tree {
         }
     }
 
-    pub fn show(&self, depth: usize) {
-        match self {
-            Tree::Leaf(key, val) => {
-                println!("{}leaf {} value {}", " ".repeat(depth), key, val)
-            }
-            Tree::Node(left, right, val) => {
-                println!("{}node {}", " ".repeat(depth), val);
-                left.show(depth + 1);
-                right.show(depth + 1);
-            }
-            Tree::Root(left, right) => {
-                left.show(depth + 1);
-                right.show(depth + 1);
-            }
-        }
-    }
-
     pub fn mktree(mut freq: Vec<Tree>) -> Tree {
         loop {
             let mut bigger = (0, usize::MAX);
@@ -158,5 +142,27 @@ impl Tree {
                 smaller.1 + bigger.1,
             ));
         }
+    }
+}
+
+impl Display for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fn show(tree: &Tree, depth: usize, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match tree {
+                Tree::Leaf(key, val) => {
+                    writeln!(f, "{}leaf {} value {}", " ".repeat(depth), key, val)
+                }
+                Tree::Node(left, right, val) => {
+                    writeln!(f, "{}node {}", " ".repeat(depth), val)?;
+                    show(left, depth + 1, f)?;
+                    show(right, depth + 1, f)
+                }
+                Tree::Root(left, right) => {
+                    show(left, depth + 1, f)?;
+                    show(right, depth + 1, f)
+                }
+            }
+        }
+        show(self, 0, f)
     }
 }
