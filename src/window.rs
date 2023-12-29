@@ -1,4 +1,4 @@
-use std::io::{self, BufRead, Error};
+use std::io::{self, BufRead};
 
 #[derive(PartialEq, Debug)]
 pub enum Estimate {
@@ -125,7 +125,8 @@ where
     fn from(mut value: R) -> Self {
         let &initial = value
             .fill_buf()
-            .and_then(|buf| buf.first().map_or(Err(Error::other("")), Ok))
+            .map_err(|_| ())
+            .and_then(|buf| buf.first().map_or(Err(()), Ok))
             .unwrap_or(&0);
         value.consume(1);
         BitWindow {
