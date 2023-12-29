@@ -79,7 +79,7 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
             table::Entry::Subtable { offset, bitdepth } => {
                 consume_err_on_read_padding(&mut window, 8, padding)?;
                 // handle subtable entry
-                let index = window.show_exact(bitdepth) as usize;
+                let index = window.show_exact(bitdepth);
                 let entry = table[index + offset];
                 let table::Entry::Map { byte, bitlen } = entry else {
                     unimplemented!("dont allow nested subtables");

@@ -1,18 +1,19 @@
 use std::io::{self, BufRead};
 
-#[derive(PartialEq, Debug)]
-pub enum Estimate {
-    Exact(usize),
-    AtLeast(usize),
-}
-
 /// When constructed via [`From<BufRead>`] will hallucinate a 0 byte if the data source
 /// is of lenght 0.
 pub struct BitWindow<R> {
     data: R,
     initialized: usize, // number of bits in current that are populated (left to right) -> 0b11100101_xxxxxxxx initialized = 8
-    current: u16,
+    current: usize,
 }
+
+/// MUST be below (usize::BITS - 8)
+const READAHEAD: usize = 8;
+/// Alias to usize::BITS as usize
+const MAXIBITS: usize = usize::BITS as usize;
+/// Alias to u8::BITS as usize
+const U8BITS: usize = u8::BITS as usize;
 
 impl<R> BitWindow<R>
 where
@@ -22,11 +23,11 @@ where
     ///
     /// padded on the right with 0s if there was insufficient data to fill the window
     pub fn show_u8(&self) -> u8 {
-        self.show::<8>()
+        self.show::<8>() as u8
     }
 
-    pub fn show<const BITS: usize>(&self) -> u8 {
-        (self.current >> (16 - BITS)) as u8
+    pub fn show<const BITS: usize>(&self) -> usize {
+        self.current >> (MAXIBITS - BITS)
     }
 
     /// shows a `amt`bit window at the current position
@@ -34,8 +35,8 @@ where
     /// padded on the right with 0s if there was insufficient data to fill the window
     ///
     /// there are `8 - amt` 0 bits before the data
-    pub fn show_exact(&self, amt: usize) -> u8 {
-        (self.current >> (16 - amt)) as u8
+    pub fn show_exact(&self, amt: usize) -> usize {
+        self.current >> (MAXIBITS - amt)
     }
 
     /// Tells this buffer that `amt` bits have been consumed from the buffer,
@@ -66,7 +67,7 @@ where
 
         self.current <<= amt;
         self.initialized -= amt;
-        if self.initialized <= 8 {
+        if self.initialized <= READAHEAD {
             return self.load();
         }
         Ok(false)
@@ -116,9 +117,9 @@ where
     /// # Safety
     /// This function produces undefined behavior when called while `self.initialized > 8`
     fn append_byte(&mut self, byte: u8) {
-        let shift = 8 - self.initialized;
-        self.current |= (byte as u16) << shift;
-        self.initialized += 8;
+        let shift = (MAXIBITS - U8BITS) - self.initialized;
+        self.current |= (byte as usize) << shift;
+        self.initialized += U8BITS;
     }
 }
 
@@ -135,8 +136,8 @@ where
         value.consume(1);
         BitWindow {
             data: value,
-            current: (initial as u16) << 8,
-            initialized: 8,
+            current: (initial as usize) << (MAXIBITS - U8BITS),
+            initialized: U8BITS,
         }
     }
 }
