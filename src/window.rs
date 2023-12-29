@@ -21,8 +21,12 @@ where
     /// shows the current 8bit window
     ///
     /// padded on the right with 0s if there was insufficient data to fill the window
-    pub fn show(&self) -> u8 {
-        (self.current >> 8) as u8
+    pub fn show_u8(&self) -> u8 {
+        self.show::<8>()
+    }
+
+    pub fn show<const BITS: usize>(&self) -> u8 {
+        (self.current >> (16 - BITS)) as u8
     }
 
     /// shows a `amt`bit window at the current position
@@ -149,7 +153,7 @@ mod tests {
         let data: BufReader<&[u8]> = BufReader::new(&data);
         let reader: BitWindow<BufReader<&[u8]>> = data.into();
 
-        let bits = reader.show();
+        let bits = reader.show_u8();
         assert_eq!(bits, 0b10011010u8);
     }
 
@@ -160,7 +164,7 @@ mod tests {
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
 
         reader.consume(4).expect("io err");
-        let bits = reader.show();
+        let bits = reader.show_u8();
         assert_eq!(bits, 0b10101001u8);
     }
 
@@ -171,7 +175,7 @@ mod tests {
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
 
         reader.consume(8).expect("io err");
-        let bits = reader.show();
+        let bits = reader.show_u8();
         assert_eq!(bits, 0b10011010);
     }
 
@@ -183,7 +187,7 @@ mod tests {
 
         reader.consume(5).expect("io err");
         reader.consume(6).expect("io err");
-        let bits = reader.show();
+        let bits = reader.show_u8();
         assert_eq!(bits, 0b11010100);
     }
 
@@ -196,7 +200,7 @@ mod tests {
         reader.consume(5).expect("io err");
         reader.consume(6).expect("io err");
         reader.consume(5).expect("io err");
-        let bits = reader.show();
+        let bits = reader.show_u8();
         assert_eq!(bits, 0);
         assert_eq!(reader.initialized, 0);
     }

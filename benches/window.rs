@@ -77,6 +77,17 @@ fn criterion_benchmark(c: &mut Criterion) {
             bench_window_reader(reader, slice_of_u8.len());
         })
     });
+
+    println!("wait 5 s to allow cpu cool");
+    thread::sleep(Duration::from_secs(5));
+
+    runtime.bench_function("window peek", |bencher| {
+        bencher.iter(|| {
+            let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+            let reader: BitWindow<_> = slice_of_u8.into();
+            bench_window_reader_peek(reader, slice_of_u8.len());
+        })
+    });
 }
 
 fn bench_bitstream(mut reader: impl BitRead, bytes: usize) {
@@ -105,6 +116,29 @@ fn bench_reader_optimal(mut reader: BitReader, bytes: usize) {
         let _ = black_box(reader.read_u8(2).unwrap()); // 1
         let _ = black_box(reader.read_u8(3).unwrap()); // 0
         let _ = black_box(reader.read_u8(6).unwrap()); // 0b1111
+    }
+}
+
+fn bench_window_reader_peek(mut reader: BitWindow<&[u8]>, bytes: usize) {
+    for _ in 0..(bytes / 3) {
+        // You obviously should use try! or some other error handling mechanism here
+        let _ = black_box(reader.show_u8());
+        reader.consume(1).unwrap();
+        let _ = black_box(reader.show_u8());
+        reader.consume(2).unwrap();
+        let _ = black_box(reader.show_u8());
+        reader.consume(3).unwrap();
+        let _ = black_box(reader.show_u8());
+        reader.consume(6).unwrap();
+
+        let _ = black_box(reader.show_u8());
+        reader.consume(1).unwrap();
+        let _ = black_box(reader.show_u8());
+        reader.consume(2).unwrap();
+        let _ = black_box(reader.show_u8());
+        reader.consume(3).unwrap();
+        let _ = black_box(reader.show_u8());
+        reader.consume(6).unwrap();
     }
 }
 
