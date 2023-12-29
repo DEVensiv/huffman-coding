@@ -9,6 +9,8 @@ edition = "2021"
 [dependencies]
 
 [dev-dependencies]
+bitreader = "0.3.8"
+bitstream-io = "2.2.0"
 criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
 tempfile = "3.8.1"
 
@@ -18,6 +20,10 @@ harness = false
 
 [[bench]]
 name = "decoding"
+harness = false
+
+[[bench]]
+name = "window"
 harness = false
 
 [features]
