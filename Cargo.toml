@@ -29,4 +29,8 @@ harness = false
 name = "window"
 harness = false
 
+[[bench]]
+name = "window_primitives"
+harness = false
+
 [features]
