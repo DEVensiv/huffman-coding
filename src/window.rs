@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_ret_not_eof() {
+    fn consume_return_not_eof() {
         let data = [0b10011010; 2];
         let data: BufReader<&[u8]> = BufReader::new(&data);
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_ret_eof() {
+    fn consume_return_eof() {
         let data = [0b10011010; 2];
         let data: BufReader<&[u8]> = BufReader::new(&data);
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
