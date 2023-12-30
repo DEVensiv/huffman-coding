@@ -1,8 +1,8 @@
-use std::{hint::black_box, io::BufReader, thread, time::Duration};
+use std::{hint::black_box, io::BufReader, time::Duration};
 
 use bitreader::BitReader;
 use bitstream_io::{BitRead, LittleEndian};
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_main, Criterion};
 use huffman::window::BitWindow;
 
 const SOURCE_BYTES: usize = 1000 * 3;
@@ -19,9 +19,6 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    println!("wait 3 s to allow cpu cool");
-    thread::sleep(Duration::from_secs(3));
-
     setup.bench_function("bitreader setup", |b| {
         b.iter(|| {
             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
@@ -29,9 +26,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             black_box(reader)
         })
     });
-
-    println!("wait 3 s to allow cpu cool");
-    thread::sleep(Duration::from_secs(3));
 
     setup.bench_function("window setup", |b| {
         b.iter(|| {
@@ -44,9 +38,6 @@ fn criterion_benchmark(c: &mut Criterion) {
     setup.finish();
     let mut runtime = c.benchmark_group("runtime");
 
-    println!("wait 5 s to allow cpu cool");
-    thread::sleep(Duration::from_secs(5));
-
     runtime.bench_function("bitstream", |bencher| {
         bencher.iter(|| {
             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
@@ -56,9 +47,6 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    println!("wait 5 s to allow cpu cool");
-    thread::sleep(Duration::from_secs(5));
-
     runtime.bench_function("bitreader", |bencher| {
         bencher.iter(|| {
             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
@@ -67,9 +55,6 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    println!("wait 5 s to allow cpu cool");
-    thread::sleep(Duration::from_secs(5));
-
     runtime.bench_function("window", |bencher| {
         bencher.iter(|| {
             let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
@@ -77,9 +62,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             bench_window_reader(reader, slice_of_u8.len());
         })
     });
-
-    println!("wait 5 s to allow cpu cool");
-    thread::sleep(Duration::from_secs(5));
 
     runtime.bench_function("window peek", |bencher| {
         bencher.iter(|| {
@@ -165,5 +147,11 @@ fn bench_window_reader(mut reader: BitWindow<&[u8]>, bytes: usize) {
     }
 }
 
-criterion_group!(benches, criterion_benchmark);
+pub fn benches() {
+    let mut criterion = Criterion::default()
+        .configure_from_args()
+        .warm_up_time(Duration::from_secs(1))
+        .measurement_time(Duration::from_secs(1));
+    criterion_benchmark(&mut criterion);
+}
 criterion_main!(benches);

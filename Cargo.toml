@@ -4,6 +4,9 @@ version = "0.2.0" # remember to bump Tree::HEADER_*
 authors = ["devensiv <devensiv@devensiv.dev>"]
 edition = "2021"
 
+[profile.release]
+codegen-units = 1
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -11,7 +14,7 @@ edition = "2021"
 [dev-dependencies]
 bitreader = "0.3.8"
 bitstream-io = "2.2.0"
-criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 tempfile = "3.8.1"
 
 [[bench]]
