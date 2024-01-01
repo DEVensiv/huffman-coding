@@ -36,115 +36,156 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     setup.finish();
-    let mut runtime = c.benchmark_group("runtime");
 
-    runtime.bench_function("bitstream", |bencher| {
-        bencher.iter(|| {
-            let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
-            let reader: bitstream_io::BitReader<BufReader<&[u8]>, LittleEndian> =
-                bitstream_io::BitReader::new(BufReader::new(slice_of_u8));
-            bench_bitstream(reader, slice_of_u8.len());
-        })
-    });
+    let mut single_dyn_read = c.benchmark_group("single_dyn_read");
 
-    runtime.bench_function("bitreader", |bencher| {
-        bencher.iter(|| {
-            let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
-            let reader = BitReader::new(slice_of_u8);
-            bench_reader_optimal(reader, slice_of_u8.len());
-        })
-    });
+    for bits in 1..9 {
+        // single_dyn_read.bench_with_input(BenchmarkId::new("bitreader", bits), &bits, |b, input| {
+        //     b.iter(|| {
+        //         let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
+        //         let mut reader = BitReader::new(slice_of_u8);
+        //         reader.read_u8(*input as u8).unwrap()
+        //     })
+        // });
 
-    runtime.bench_function("window", |bencher| {
-        bencher.iter(|| {
-            let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-            let reader: BitWindow<_> = slice_of_u8.into();
-            bench_window_reader(reader, slice_of_u8.len());
-        })
-    });
+        single_dyn_read.bench_with_input(BenchmarkId::new("bitstream", bits), &bits, |b, input| {
+            b.iter(|| {
+                let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
+                let mut reader: bitstream_io::BitReader<&[u8], BigEndian> =
+                    bitstream_io::BitReader::new(slice_of_u8);
+                reader.read::<u8>(*input as u32).unwrap()
+            })
+        });
 
-    runtime.bench_function("window peek", |bencher| {
-        bencher.iter(|| {
-            let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-            let reader: BitWindow<_> = slice_of_u8.into();
-            bench_window_reader_peek(reader, slice_of_u8.len());
-        })
-    });
-}
-
-fn bench_bitstream(mut reader: impl BitRead, bytes: usize) {
-    for _ in 0..(bytes / 3) {
-        // You obviously should use try! or some other error handling mechanism here
-        let _: u8 = reader.read(1).unwrap();
-        let _: u8 = reader.read(2).unwrap();
-        let _: u8 = reader.read(3).unwrap();
-        let _: u8 = reader.read(6).unwrap();
-
-        let _: u8 = reader.read(1).unwrap();
-        let _: u8 = reader.read(2).unwrap();
-        let _: u8 = reader.read(3).unwrap();
-        let _: u8 = reader.read(6).unwrap();
+        single_dyn_read.bench_with_input(BenchmarkId::new("window", bits), &bits, |b, input| {
+            b.iter(|| {
+                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                let mut reader: BitWindow<_> = slice_of_u8.into();
+                let bits = reader.show_exact(*input as usize);
+                reader.consume(*input).unwrap();
+                bits
+            })
+        });
     }
-}
+    single_dyn_read.finish();
 
-fn bench_reader_optimal(mut reader: BitReader, bytes: usize) {
-    for _ in 0..(bytes / 3) {
-        let _ = black_box(reader.read_u8(1).unwrap()); // 1
-        let _ = black_box(reader.read_u8(2).unwrap()); // 1
-        let _ = black_box(reader.read_u8(3).unwrap()); // 0
-        let _ = black_box(reader.read_u8(6).unwrap()); // 0b1111
+    let mut multi_const_read = c.benchmark_group("multi_const_read");
 
-        let _ = black_box(reader.read_u8(1).unwrap()); // 1
-        let _ = black_box(reader.read_u8(2).unwrap()); // 1
-        let _ = black_box(reader.read_u8(3).unwrap()); // 0
-        let _ = black_box(reader.read_u8(6).unwrap()); // 0b1111
+    for bytes in 0..5 {
+        let bytes = bytes * 10;
+        // multi_const_read.bench_with_input(
+        //     BenchmarkId::new("bitreader", bytes),
+        //     &bytes,
+        //     |b, input| {
+        //         b.iter(|| {
+        //             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
+        //             let mut reader = BitReader::new(slice_of_u8);
+        //             let mut acc = [0; 40];
+        //             for i in acc.iter_mut().take(*input) {
+        //                 *i = reader.read_u8(8).unwrap();
+        //             }
+        //             acc
+        //         })
+        //     },
+        // );
+
+        multi_const_read.bench_with_input(
+            BenchmarkId::new("bitstream", bytes),
+            &bytes,
+            |b, input| {
+                b.iter(|| {
+                    let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
+                    let mut reader: bitstream_io::BitReader<&[u8], BigEndian> =
+                        bitstream_io::BitReader::new(slice_of_u8);
+                    let mut acc = [0; 40];
+                    for i in acc.iter_mut().take(*input) {
+                        *i = reader.read::<u8>(8).unwrap();
+                    }
+                    acc
+                })
+            },
+        );
+
+        multi_const_read.bench_with_input(BenchmarkId::new("window, const fn", bytes), &bytes, |b, input| {
+            b.iter(|| {
+                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                let mut reader: BitWindow<_> = slice_of_u8.into();
+                let mut acc = [0; 40];
+                for i in acc.iter_mut().take(*input) {
+                    *i = reader.show_u8();
+                    reader.consume(8).unwrap();
+                }
+                acc
+            })
+        });
+
+        multi_const_read.bench_with_input(BenchmarkId::new("window", bytes), &bytes, |b, input| {
+            b.iter(|| {
+                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                let mut reader: BitWindow<_> = slice_of_u8.into();
+                let mut acc = [0; 40];
+                for i in acc.iter_mut().take(*input) {
+                    *i = reader.show_exact(8);
+                    reader.consume(8).unwrap();
+                }
+                acc
+            })
+        });
     }
-}
+    multi_const_read.finish();
 
-fn bench_window_reader_peek(mut reader: BitWindow<&[u8]>, bytes: usize) {
-    for _ in 0..(bytes / 3) {
-        // You obviously should use try! or some other error handling mechanism here
-        let _ = black_box(reader.show_u8());
-        reader.consume(1).unwrap();
-        let _ = black_box(reader.show_u8());
-        reader.consume(2).unwrap();
-        let _ = black_box(reader.show_u8());
-        reader.consume(3).unwrap();
-        let _ = black_box(reader.show_u8());
-        reader.consume(6).unwrap();
+    let mut multi_const_read_unaligned = c.benchmark_group("multi_const_read_unaligned");
 
-        let _ = black_box(reader.show_u8());
-        reader.consume(1).unwrap();
-        let _ = black_box(reader.show_u8());
-        reader.consume(2).unwrap();
-        let _ = black_box(reader.show_u8());
-        reader.consume(3).unwrap();
-        let _ = black_box(reader.show_u8());
-        reader.consume(6).unwrap();
+    for bytes in 0..5 {
+        let bytes = bytes * 10;
+        // multi_const_read_unaligned.bench_with_input(
+        //     BenchmarkId::new("bitreader", bytes),
+        //     &bytes,
+        //     |b, input| {
+        //         b.iter(|| {
+        //             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
+        //             let mut reader = BitReader::new(slice_of_u8);
+        //             let mut acc = [0; 40];
+        //             for i in acc.iter_mut().take(*input) {
+        //                 *i = reader.read_u8(3).unwrap();
+        //             }
+        //             acc
+        //         })
+        //     },
+        // );
+
+        multi_const_read_unaligned.bench_with_input(
+            BenchmarkId::new("bitstream", bytes),
+            &bytes,
+            |b, input| {
+                b.iter(|| {
+                    let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
+                    let mut reader: bitstream_io::BitReader<&[u8], BigEndian> =
+                        bitstream_io::BitReader::new(slice_of_u8);
+                    let mut acc = [0; 40];
+                    for i in acc.iter_mut().take(*input) {
+                        *i = reader.read::<u8>(3).unwrap();
+                    }
+                    acc
+                })
+            },
+        );
+
+        multi_const_read_unaligned.bench_with_input(BenchmarkId::new("window", bytes), &bytes, |b, input| {
+            b.iter(|| {
+                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                let mut reader: BitWindow<_> = slice_of_u8.into();
+                let mut acc = [0; 40];
+                for i in acc.iter_mut().take(*input) {
+                    *i = reader.show_exact(3);
+                    reader.consume(3).unwrap();
+                }
+                acc
+            })
+        });
     }
-}
+    multi_const_read_unaligned.finish();
 
-fn bench_window_reader(mut reader: BitWindow<&[u8]>, bytes: usize) {
-    for _ in 0..(bytes / 3) {
-        // You obviously should use try! or some other error handling mechanism here
-        let _ = black_box(reader.show_exact(1));
-        reader.consume(1).unwrap();
-        let _ = black_box(reader.show_exact(2));
-        reader.consume(2).unwrap();
-        let _ = black_box(reader.show_exact(3));
-        reader.consume(3).unwrap();
-        let _ = black_box(reader.show_exact(6));
-        reader.consume(6).unwrap();
-
-        let _ = black_box(reader.show_exact(1));
-        reader.consume(1).unwrap();
-        let _ = black_box(reader.show_exact(2));
-        reader.consume(2).unwrap();
-        let _ = black_box(reader.show_exact(3));
-        reader.consume(3).unwrap();
-        let _ = black_box(reader.show_exact(6));
-        reader.consume(6).unwrap();
-    }
 }
 
 pub fn benches() {
