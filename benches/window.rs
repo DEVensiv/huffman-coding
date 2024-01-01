@@ -1,8 +1,8 @@
-use std::{hint::black_box, io::BufReader, time::Duration};
+use std::time::Duration;
 
 use bitreader::BitReader;
-use bitstream_io::{BitRead, LittleEndian};
-use criterion::{criterion_main, Criterion};
+use bitstream_io::{BigEndian, BitRead};
+use criterion::{criterion_main, BenchmarkId, Criterion};
 use huffman::window::BitWindow;
 
 const SOURCE_BYTES: usize = 1000 * 3;
@@ -10,28 +10,28 @@ const SOURCE_BYTES: usize = 1000 * 3;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut setup = c.benchmark_group("setup");
 
-    setup.bench_function("bitstream setup", |b| {
+    setup.bench_function("bitstream", |b| {
         b.iter(|| {
             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
-            let reader: bitstream_io::BitReader<&[u8], LittleEndian> =
+            let reader: bitstream_io::BitReader<&[u8], BigEndian> =
                 bitstream_io::BitReader::new(slice_of_u8);
-            black_box(reader)
+            reader
         })
     });
 
-    setup.bench_function("bitreader setup", |b| {
+    setup.bench_function("bitreader", |b| {
         b.iter(|| {
             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
             let reader = BitReader::new(slice_of_u8);
-            black_box(reader)
+            reader
         })
     });
 
-    setup.bench_function("window setup", |b| {
+    setup.bench_function("window", |b| {
         b.iter(|| {
             let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
             let reader: BitWindow<_> = slice_of_u8.into();
-            black_box(reader)
+            reader
         })
     });
 
