@@ -40,14 +40,6 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut single_dyn_read = c.benchmark_group("single_dyn_read");
 
     for bits in 1..9 {
-        // single_dyn_read.bench_with_input(BenchmarkId::new("bitreader", bits), &bits, |b, input| {
-        //     b.iter(|| {
-        //         let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
-        //         let mut reader = BitReader::new(slice_of_u8);
-        //         reader.read_u8(*input as u8).unwrap()
-        //     })
-        // });
-
         single_dyn_read.bench_with_input(BenchmarkId::new("bitstream", bits), &bits, |b, input| {
             b.iter(|| {
                 let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
@@ -61,7 +53,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             b.iter(|| {
                 let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
                 let mut reader: BitWindow<_> = slice_of_u8.into();
-                let bits = reader.show_exact(*input as usize);
+                let bits = reader.show(*input);
                 reader.consume(*input).unwrap();
                 bits
             })
@@ -70,27 +62,14 @@ fn criterion_benchmark(c: &mut Criterion) {
     single_dyn_read.finish();
 
     let mut multi_const_read = c.benchmark_group("multi_const_read");
+    let iters = 5;
+    let multiplier = 10;
 
-    for bytes in 0..5 {
-        let bytes = bytes * 10;
-        // multi_const_read.bench_with_input(
-        //     BenchmarkId::new("bitreader", bytes),
-        //     &bytes,
-        //     |b, input| {
-        //         b.iter(|| {
-        //             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
-        //             let mut reader = BitReader::new(slice_of_u8);
-        //             let mut acc = [0; 40];
-        //             for i in acc.iter_mut().take(*input) {
-        //                 *i = reader.read_u8(8).unwrap();
-        //             }
-        //             acc
-        //         })
-        //     },
-        // );
+    for bytes in 0..iters {
+        let bytes = bytes * multiplier;
 
         multi_const_read.bench_with_input(
-            BenchmarkId::new("bitstream", bytes),
+            BenchmarkId::new("aligned/bitstream", bytes),
             &bytes,
             |b, input| {
                 b.iter(|| {
@@ -105,57 +84,32 @@ fn criterion_benchmark(c: &mut Criterion) {
                 })
             },
         );
-
-        multi_const_read.bench_with_input(BenchmarkId::new("window, const fn", bytes), &bytes, |b, input| {
-            b.iter(|| {
-                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-                let mut reader: BitWindow<_> = slice_of_u8.into();
-                let mut acc = [0; 40];
-                for i in acc.iter_mut().take(*input) {
-                    *i = reader.show_u8();
-                    reader.consume(8).unwrap();
-                }
-                acc
-            })
-        });
-
-        multi_const_read.bench_with_input(BenchmarkId::new("window", bytes), &bytes, |b, input| {
-            b.iter(|| {
-                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-                let mut reader: BitWindow<_> = slice_of_u8.into();
-                let mut acc = [0; 40];
-                for i in acc.iter_mut().take(*input) {
-                    *i = reader.show_exact(8);
-                    reader.consume(8).unwrap();
-                }
-                acc
-            })
-        });
     }
-    multi_const_read.finish();
 
-    let mut multi_const_read_unaligned = c.benchmark_group("multi_const_read_unaligned");
+    for bytes in 0..iters {
+        let bytes = bytes * multiplier;
+        multi_const_read.bench_with_input(
+            BenchmarkId::new("aligned/window", bytes),
+            &bytes,
+            |b, input| {
+                b.iter(|| {
+                    let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                    let mut reader: BitWindow<_> = slice_of_u8.into();
+                    let mut acc = [0; 40];
+                    for i in acc.iter_mut().take(*input) {
+                        *i = reader.show(8);
+                        reader.consume(8).unwrap();
+                    }
+                    acc
+                })
+            },
+        );
+    }
 
-    for bytes in 0..5 {
-        let bytes = bytes * 10;
-        // multi_const_read_unaligned.bench_with_input(
-        //     BenchmarkId::new("bitreader", bytes),
-        //     &bytes,
-        //     |b, input| {
-        //         b.iter(|| {
-        //             let slice_of_u8 = &[0b1000_1111; SOURCE_BYTES];
-        //             let mut reader = BitReader::new(slice_of_u8);
-        //             let mut acc = [0; 40];
-        //             for i in acc.iter_mut().take(*input) {
-        //                 *i = reader.read_u8(3).unwrap();
-        //             }
-        //             acc
-        //         })
-        //     },
-        // );
-
-        multi_const_read_unaligned.bench_with_input(
-            BenchmarkId::new("bitstream", bytes),
+    for bytes in 0..iters {
+        let bytes = bytes * multiplier;
+        multi_const_read.bench_with_input(
+            BenchmarkId::new("unaligned/bitstream", bytes),
             &bytes,
             |b, input| {
                 b.iter(|| {
@@ -170,22 +124,29 @@ fn criterion_benchmark(c: &mut Criterion) {
                 })
             },
         );
-
-        multi_const_read_unaligned.bench_with_input(BenchmarkId::new("window", bytes), &bytes, |b, input| {
-            b.iter(|| {
-                let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-                let mut reader: BitWindow<_> = slice_of_u8.into();
-                let mut acc = [0; 40];
-                for i in acc.iter_mut().take(*input) {
-                    *i = reader.show_exact(3);
-                    reader.consume(3).unwrap();
-                }
-                acc
-            })
-        });
     }
-    multi_const_read_unaligned.finish();
 
+    for bytes in 0..iters {
+        let bytes = bytes * multiplier;
+        multi_const_read.bench_with_input(
+            BenchmarkId::new("unaligned/window", bytes),
+            &bytes,
+            |b, input| {
+                b.iter(|| {
+                    let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                    let mut reader: BitWindow<_> = slice_of_u8.into();
+                    let mut acc = [0; 40];
+                    for i in acc.iter_mut().take(*input) {
+                        *i = reader.show(3);
+                        reader.consume(3).unwrap();
+                    }
+                    acc
+                })
+            },
+        );
+    }
+
+    multi_const_read.finish();
 }
 
 pub fn benches() {

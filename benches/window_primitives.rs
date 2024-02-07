@@ -7,31 +7,13 @@ const SOURCE_BYTES: usize = 50;
 
 fn criterion_benchmark(c: &mut Criterion) {
 
-    let mut show = c.benchmark_group("show");
-    show.bench_function("show_u8", |bencher| {
-        bencher.iter(|| {
-            let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-            let reader: BitWindow<_> = slice_of_u8.into();
-            reader.show_u8()
-        })
-    });
-
-    show.bench_function("show_exact(8)", |bencher| {
-        bencher.iter(|| {
-            let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
-            let reader: BitWindow<_> = slice_of_u8.into();
-            reader.show_exact(8)
-        })
-    });
-    show.finish();
-
-    let mut show_exact = c.benchmark_group("show_exact(diff)");
+    let mut show_exact = c.benchmark_group("show(diff)");
     for input in 1..8 {
         show_exact.bench_with_input(BenchmarkId::new("", input), &input, |bencher, input| {
             bencher.iter(|| {
                 let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
                 let reader: BitWindow<_> = slice_of_u8.into();
-                reader.show_exact(*input)
+                reader.show(*input)
             })
         });
     }

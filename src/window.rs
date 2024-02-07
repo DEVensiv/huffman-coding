@@ -24,24 +24,14 @@ impl<R> BitWindow<R>
 where
     R: BufRead,
 {
-    /// shows the current 8bit window
-    ///
-    /// padded on the right with 0s if there was insufficient data to fill the window
-    pub fn show_u8(&self) -> usize {
-        self.show::<8>()
-    }
-
-    pub fn show<const BITS: usize>(&self) -> usize {
-        self.current >> (MAXIBITS - BITS)
-    }
-
     /// shows a `amt`bit window at the current position
     ///
     /// padded on the right with 0s if there was insufficient data to fill the window
     ///
-    /// e.g. if 'amt' is 5 the bits will be layed out like so: "0001_2345" 
+    /// e.g. if 'amt' is 5 the bits will be layed out like so: "0001_2345"
     /// where 0s are actual zeros and 1-5 are the 1 starting indecies for the read bits
-    pub fn show_exact(&self, amt: usize) -> usize {
+    #[inline(always)]
+    pub const fn show(&self, amt: usize) -> usize {
         self.current >> (MAXIBITS - amt)
     }
 
@@ -82,7 +72,8 @@ where
     /// [`consume`] will always fill up when consumed below 8
     ///
     /// [`consume`]: BitWindow::consume
-    pub fn initialized(&self) -> usize {
+    #[inline(always)]
+    pub const fn initialized(&self) -> usize {
         self.initialized
     }
 
@@ -100,6 +91,7 @@ where
     /// This method returns an I/O error if the underlaying data source produced
     /// one during read.
     /// In this case no bits have been loaded into `self.current`
+    #[inline(always)]
     fn load(&mut self) -> Result<bool, Error> {
         let data = self.data.fill_buf()?;
         match data.first() {
@@ -119,6 +111,7 @@ where
     ///
     /// # Safety
     /// This function produces undefined behavior when called while `self.initialized > 8`
+    #[inline(always)]
     fn append_byte(&mut self, byte: u8) {
         let shift = (MAXIBITS - U8BITS) - self.initialized;
         self.current |= (byte as usize) << shift;
@@ -157,7 +150,7 @@ mod tests {
         let data: BufReader<&[u8]> = BufReader::new(&data);
         let reader: BitWindow<BufReader<&[u8]>> = data.into();
 
-        let bits = reader.show_u8();
+        let bits = reader.show(8);
         assert_eq!(bits, 0b10011010usize);
     }
 
@@ -168,7 +161,7 @@ mod tests {
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
 
         reader.consume(4).expect("io err");
-        let bits = reader.show_u8();
+        let bits = reader.show(8);
         assert_eq!(bits, 0b10101001usize);
     }
 
@@ -179,7 +172,7 @@ mod tests {
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
 
         reader.consume(8).expect("io err");
-        let bits = reader.show_u8();
+        let bits = reader.show(8);
         assert_eq!(bits, 0b10011010);
     }
 
@@ -191,7 +184,7 @@ mod tests {
 
         reader.consume(5).expect("io err");
         reader.consume(6).expect("io err");
-        let bits = reader.show_u8();
+        let bits = reader.show(8);
         assert_eq!(bits, 0b11010100);
     }
 
@@ -204,19 +197,19 @@ mod tests {
         reader.consume(5).expect("io err");
         reader.consume(6).expect("io err");
         reader.consume(5).expect("io err");
-        let bits = reader.show_u8();
+        let bits = reader.show(8);
         assert_eq!(bits, 0);
         assert_eq!(reader.initialized, 0);
     }
 
     #[test]
-    fn show_exact() {
+    fn show_less() {
         let data = [0b10011010; 8];
         let data: BufReader<&[u8]> = BufReader::new(&data);
         let mut reader: BitWindow<BufReader<&[u8]>> = data.into();
 
         reader.consume(5).expect("io err");
-        let bits = reader.show_exact(5);
+        let bits = reader.show(5);
         assert_eq!(bits, 0b00001010);
     }
 
