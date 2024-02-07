@@ -3,7 +3,7 @@ use std::time::Duration;
 use criterion::{criterion_main, BenchmarkId, Criterion};
 use huffman::window::BitWindow;
 
-const SOURCE_BYTES: usize = 40;
+const SOURCE_BYTES: usize = 50;
 
 fn criterion_benchmark(c: &mut Criterion) {
 
@@ -37,10 +37,27 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
     show_exact.finish();
 
-    let mut consume = c.benchmark_group("consume_small");
+    let mut consume = c.benchmark_group("consume_bits");
     for consumes in 0..5 {
         consume.bench_with_input(
             BenchmarkId::new("", consumes),
+            &consumes,
+            |bencher, input| {
+                bencher.iter(|| {
+                    let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
+                    let mut reader: BitWindow<_> = slice_of_u8.into();
+                    reader.consume(*input).unwrap();
+                    reader
+                })
+            },
+        );
+    }
+    consume.finish();
+    let mut consume = c.benchmark_group("consume_full");
+    for consumes in 0..5 {
+        let consumes = consumes * 10;
+        consume.bench_with_input(
+            BenchmarkId::new("aligned", consumes),
             &consumes,
             |bencher, input| {
                 bencher.iter(|| {
@@ -54,17 +71,17 @@ fn criterion_benchmark(c: &mut Criterion) {
             },
         );
     }
-    consume.finish();
-    let mut consume = c.benchmark_group("consume_big");
-    for consumes in 1..5 {
+    for consumes in 0..5 {
         let consumes = consumes * 10;
         consume.bench_with_input(
-            BenchmarkId::new("", consumes),
+            BenchmarkId::new("unaligned", consumes),
             &consumes,
             |bencher, input| {
                 bencher.iter(|| {
                     let slice_of_u8: &[u8] = &[0b1000_1111; SOURCE_BYTES];
                     let mut reader: BitWindow<_> = slice_of_u8.into();
+                    // consume 3 bits to disalign the reader
+                    reader.consume(3).unwrap();
                     for _ in 0..*input {
                         reader.consume(8).unwrap();
                     }
