@@ -41,7 +41,7 @@ impl Table {
     /// # Returns
     /// [None] if `root` was not of type [Tree::Root]
     pub fn from_tree_root(root: &Tree) -> Option<Self> {
-        let conversion_map = root.make_conversion_map()?;
+        let conversion_map = root.make_conversion_map();
 
         let mut table = Table::new();
         let mut subtables = Vec::new();

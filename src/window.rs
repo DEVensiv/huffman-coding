@@ -1,4 +1,6 @@
-use std::io::{self, BufRead};
+use std::io::BufRead;
+
+pub use crate::error::Error;
 
 /// When constructed via [`From<BufRead>`] will hallucinate a 0 byte if the data source
 /// is of lenght 0.
@@ -14,6 +16,7 @@ const MAXIBITS: usize = usize::BITS as usize;
 const READAHEAD: usize = 8;
 #[allow(clippy::assertions_on_constants)]
 const _: () = assert!(READAHEAD <= (MAXIBITS - 8), "Readahead must be smaller");
+
 /// Alias to u8::BITS as usize
 const U8BITS: usize = u8::BITS as usize;
 
@@ -60,12 +63,9 @@ where
     ///
     ///
     /// [`show`]: BitWindow::show
-    pub fn consume(&mut self, amt: usize) -> Result<bool, io::Error> {
+    pub fn consume(&mut self, amt: usize) -> Result<bool, Error> {
         if amt > self.initialized {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Tried consuming more bits then there are",
-            ));
+            return Err(Error::NoBits);
         }
 
         self.current <<= amt;
@@ -100,7 +100,7 @@ where
     /// This method returns an I/O error if the underlaying data source produced
     /// one during read.
     /// In this case no bits have been loaded into `self.current`
-    fn load(&mut self) -> Result<bool, io::Error> {
+    fn load(&mut self) -> Result<bool, Error> {
         let data = self.data.fill_buf()?;
         match data.first() {
             Some(&byte) => {

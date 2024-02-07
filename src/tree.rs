@@ -1,13 +1,12 @@
 use crate::bitutils::Symbol;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt::Display;
-use std::io::prelude::*;
+use std::io::{self, prelude::*};
 
 const HEADER_START: &[u8; 30] = b"----- rxh tree start V2 -----\n";
 const HEADER_END: &[u8; 29] = b"\n----- rxh tree end V2 -----\n";
 const INVALID_VERSION: &str = r#"file does not contain a valid rxh tree start signature.
-You may find a version of this program thats compatible with this file here: https://github.com/devensiv/huffman-coding"#;
+If the file contains a valid signature from a prior version you may find a version of this program thats compatible with this file here: https://github.com/devensiv/huffman-coding"#;
 
 pub enum Tree {
     Root(Box<Tree>, Box<Tree>),
@@ -31,25 +30,22 @@ impl Tree {
         }
     }
 
-    pub fn make_conversion_map(&self) -> Option<HashMap<u8, Symbol>> {
-        if let Tree::Root(_, _) = self {
-            let mut map = HashMap::new();
-            Tree::fill_conversion_map(
-                self,
-                Symbol {
-                    bytes: Vec::new(),
-                    bitpos: 0,
-                    bytepos: 0,
-                },
-                &mut map,
-            );
-            Some(map)
-        } else {
-            None
-        }
+    /// creates the encoding map from bytes to huffman symbols from the tree contained under `self`
+    pub fn make_conversion_map(&self) -> HashMap<u8, Symbol> {
+        let mut map = HashMap::new();
+        Tree::fill_conversion_map(
+            self,
+            Symbol {
+                bytes: Vec::new(),
+                bitpos: 0,
+                bytepos: 0,
+            },
+            &mut map,
+        );
+        map
     }
 
-    pub fn store(&self, file: &mut impl Write) -> Result<(), Box<dyn Error>> {
+    pub fn store(&self, file: &mut impl Write) -> Result<(), io::Error> {
         match self {
             Tree::Leaf(key, _) => {
                 file.write_all(&[1, *key])?;
@@ -70,11 +66,11 @@ impl Tree {
         Ok(())
     }
 
-    pub fn try_load(input: &mut impl Read) -> Result<Tree, Box<dyn Error>> {
+    pub fn try_load(input: &mut impl Read) -> Result<Tree, io::Error> {
         let mut buffer = [0u8; HEADER_START.len()]; //header start is 29 bytes
         input.read_exact(&mut buffer)?;
         if &buffer != HEADER_START {
-            return Err(INVALID_VERSION)?;
+            return Err(io::Error::new(io::ErrorKind::InvalidData, INVALID_VERSION));
         }
 
         let result = Tree::load(input);
@@ -82,12 +78,12 @@ impl Tree {
         let mut buffer = [0u8; HEADER_END.len()]; //header end is 28 bytes
         input.read_exact(&mut buffer)?;
         if &buffer != HEADER_END {
-            return Err(INVALID_VERSION)?;
+            return Err(io::Error::new(io::ErrorKind::InvalidData, INVALID_VERSION));
         }
         result
     }
 
-    fn load(input: &mut impl Read) -> Result<Tree, Box<dyn Error>> {
+    fn load(input: &mut impl Read) -> Result<Tree, io::Error> {
         let mut buffer = [0u8];
         input.read_exact(&mut buffer)?;
         match buffer[0] {
@@ -105,7 +101,10 @@ impl Tree {
                 Box::new(Tree::load(input)?),
                 Box::new(Tree::load(input)?),
             )),
-            _ => Err("invalid key")?,
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Tree format broken",
+            )),
         }
     }
 

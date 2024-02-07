@@ -1,19 +1,19 @@
 pub mod bitutils;
+pub mod window;
 mod table;
 mod tree;
-pub mod window;
+mod error;
 
+pub use crate::error::Error;
 use crate::bitutils::Symbol;
 use crate::table::Table;
 use crate::tree::*;
 use crate::window::BitWindow;
 use std::collections::HashMap;
-use std::error::Error;
-use std::io;
 use std::io::prelude::*;
 use std::io::BufWriter;
 
-pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
+pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Error> {
     let mut raw = Vec::new();
     input.read_to_end(&mut raw)?;
     let mut map = HashMap::new();
@@ -27,7 +27,7 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
         .collect();
 
     let tree = Tree::mktree(freq);
-    let map = tree.make_conversion_map().ok_or("map creation failed")?;
+    let map = tree.make_conversion_map();
 
     tree.store(output)?;
 
@@ -38,7 +38,7 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
     };
 
     for byte in raw.iter() {
-        encoded.append_sym(map.get(byte).ok_or("byte vector creation failed")?);
+        encoded.append_sym(map.get(byte).expect("every byte variant in raw must be contained in map"));
     }
     assert_eq!(output.write(&[8u8 - encoded.bitpos as u8])?, 1);
     output.write_all(&encoded.bytes)?;
@@ -47,7 +47,7 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box
     Ok(())
 }
 
-pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dyn Error>> {
+pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Error> {
     let mut output = BufWriter::new(output);
     let root = Tree::try_load(&mut input)?;
     let table = Table::from_tree_root(&root).expect("root aint root");
@@ -59,12 +59,9 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
     let padding = padding[0] as usize;
     let mut window: BitWindow<_> = input.into();
     let consume_err_on_read_padding =
-        |window: &mut BitWindow<_>, bits: usize, padding: usize| -> Result<_, io::Error> {
+        |window: &mut BitWindow<_>, bits: usize, padding: usize| -> Result<_, Error> {
             if window.consume(bits)? && window.initialized() < padding {
-                Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Consuming {bits} overlapped with padding",
-                ))
+                Err(Error::NoBits)
             } else {
                 Ok(())
             }
@@ -101,17 +98,16 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
 #[cfg(test)]
 mod tests {
     use std::{
-        error::Error,
         fs::{self, OpenOptions},
         io::{BufReader, Read, Seek},
     };
     use tempfile::tempfile;
 
-    use crate::{hdecode, hencode};
+    use crate::{hdecode, hencode, Error};
     const RAW: &str = "flake.lock";
     const CODED: &str = "flake.lock.rxc";
 
-    fn create_decoded() -> Result<(), Box<dyn Error>> {
+    fn create_decoded() -> Result<(), Error> {
         let raw = OpenOptions::new().read(true).open(RAW)?;
         let _ = fs::remove_file(CODED);
         let mut out = OpenOptions::new().write(true).create(true).open(CODED)?;

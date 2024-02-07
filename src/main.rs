@@ -1,11 +1,10 @@
 use huffman::*;
 use std::env;
-use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::BufReader;
 use std::process::exit;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Error> {
     let mut args = env::args().skip(1);
     if let Some(arg) = args.next() {
         if arg == "--help" {
