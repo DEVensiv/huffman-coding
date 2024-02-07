@@ -70,7 +70,7 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Box<dy
             }
         };
     loop {
-        let index = window.show_u8() as usize;
+        let index = window.show_u8();
         let byte = match table[index] {
             table::Entry::Map { byte, bitlen } => {
                 consume_err_on_read_padding(&mut window, bitlen, padding)?;

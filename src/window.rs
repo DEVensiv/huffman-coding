@@ -8,10 +8,12 @@ pub struct BitWindow<R> {
     current: usize,
 }
 
-/// MUST be below (usize::BITS - 8)
-const READAHEAD: usize = 8;
-/// Alias to usize::BITS as usize
+/// count of bits in the "current" type
 const MAXIBITS: usize = usize::BITS as usize;
+/// how many bits to keep in "current" at any time
+const READAHEAD: usize = 8;
+#[allow(clippy::assertions_on_constants)]
+const _: () = assert!(READAHEAD <= (MAXIBITS - 8), "Readahead must be smaller");
 /// Alias to u8::BITS as usize
 const U8BITS: usize = u8::BITS as usize;
 
@@ -22,8 +24,8 @@ where
     /// shows the current 8bit window
     ///
     /// padded on the right with 0s if there was insufficient data to fill the window
-    pub fn show_u8(&self) -> u8 {
-        self.show::<8>() as u8
+    pub fn show_u8(&self) -> usize {
+        self.show::<8>()
     }
 
     pub fn show<const BITS: usize>(&self) -> usize {
@@ -34,7 +36,8 @@ where
     ///
     /// padded on the right with 0s if there was insufficient data to fill the window
     ///
-    /// there are `8 - amt` 0 bits before the data
+    /// e.g. if 'amt' is 5 the bits will be layed out like so: "0001_2345" 
+    /// where 0s are actual zeros and 1-5 are the 1 starting indecies for the read bits
     pub fn show_exact(&self, amt: usize) -> usize {
         self.current >> (MAXIBITS - amt)
     }
@@ -155,7 +158,7 @@ mod tests {
         let reader: BitWindow<BufReader<&[u8]>> = data.into();
 
         let bits = reader.show_u8();
-        assert_eq!(bits, 0b10011010u8);
+        assert_eq!(bits, 0b10011010usize);
     }
 
     #[test]
@@ -166,7 +169,7 @@ mod tests {
 
         reader.consume(4).expect("io err");
         let bits = reader.show_u8();
-        assert_eq!(bits, 0b10101001u8);
+        assert_eq!(bits, 0b10101001usize);
     }
 
     #[test]
