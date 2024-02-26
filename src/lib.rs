@@ -1,11 +1,11 @@
 pub mod bitutils;
-pub mod window;
+mod error;
 mod table;
 mod tree;
-mod error;
+pub mod window;
 
-pub use crate::error::Error;
 use crate::bitutils::Symbol;
+pub use crate::error::Error;
 use crate::table::Table;
 use crate::tree::*;
 use crate::window::BitWindow;
@@ -38,7 +38,10 @@ pub fn hencode(input: &mut impl Read, output: &mut impl Write) -> Result<(), Err
     };
 
     for byte in raw.iter() {
-        encoded.append_sym(map.get(byte).expect("every byte variant in raw must be contained in map"));
+        encoded.append_sym(
+            map.get(byte)
+                .expect("every byte variant in raw must be contained in map"),
+        );
     }
     assert_eq!(output.write(&[8u8 - encoded.bitpos as u8])?, 1);
     output.write_all(&encoded.bytes)?;

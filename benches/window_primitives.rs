@@ -6,7 +6,6 @@ use huffman::window::BitWindow;
 const SOURCE_BYTES: usize = 50;
 
 fn criterion_benchmark(c: &mut Criterion) {
-
     let mut show_exact = c.benchmark_group("show(diff)");
     for input in 1..8 {
         show_exact.bench_with_input(BenchmarkId::new("", input), &input, |bencher, input| {
