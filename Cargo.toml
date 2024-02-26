@@ -4,6 +4,7 @@ version = "0.2.0" # remember to bump Tree::HEADER_*
 authors = ["devensiv <devensiv@devensiv.dev>"]
 edition = "2021"
 description = "lib crates exposes binary manipulation primitives and a high level interface for encoding/decoding data using optimal huffman trees"
+license = "MIT"
 
 [profile.release]
 codegen-units = 1
