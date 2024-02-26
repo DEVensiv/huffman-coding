@@ -97,49 +97,35 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Error>
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs::{self, OpenOptions},
-        io::{BufReader, Read, Seek},
-    };
-    use tempfile::tempfile;
-
     use crate::{hdecode, hencode, Error};
-    const RAW: &str = "flake.lock";
-    const CODED: &str = "flake.lock.rxc";
+    const RAW: &str = r#"
+In computer science and information theory, a Huffman code is a particular type of optimal prefix code that is commonly used for lossless data compression. The process of finding or using such a code is Huffman coding, an algorithm developed by David A. Huffman while he was a Sc.D. student at MIT, and published in the 1952 paper "A Method for the Construction of Minimum-Redundancy Codes".[1]
 
-    fn create_decoded() -> Result<(), Error> {
-        let raw = OpenOptions::new().read(true).open(RAW)?;
-        let _ = fs::remove_file(CODED);
-        let mut out = OpenOptions::new().write(true).create(true).open(CODED)?;
-        let mut reader = BufReader::new(raw);
-        hencode(&mut reader, &mut out)
+The output from Huffman's algorithm can be viewed as a variable-length code table for encoding a source symbol (such as a character in a file). The algorithm derives this table from the estimated probability or frequency of occurrence (weight) for each possible value of the source symbol. As in other entropy encoding methods, more common symbols are generally represented using fewer bits than less common symbols. Huffman's method can be efficiently implemented, finding a code in time linear to the number of input weights if these weights are sorted.[2] However, although optimal among methods encoding symbols separately, Huffman coding is not always optimal among all compression methods - it is replaced with arithmetic coding[3] or asymmetric numeral systems[4] if a better compression ratio is required. 
+"#;
+
+    fn create_coded() -> Result<Vec<u8>, Error> {
+        let raw = RAW;
+        let mut out = Vec::new();
+        let mut reader = raw.as_bytes();
+        hencode(&mut reader, &mut out)?;
+        Ok(out)
     }
 
     #[test]
     fn decode() {
-        create_decoded().expect("encoding failed. cannot test decoding");
-
-        let mut out = tempfile().expect("temfile err");
-        let raw = OpenOptions::new().read(true).open(CODED).expect("file err");
-        let mut reader = BufReader::new(raw);
+        let coded = create_coded().expect("encoding failed. cannot test decoding");
+        println!("created coded: {}", String::from_utf8_lossy(&coded));
+        let mut out = Vec::new();
+        let mut reader = &coded as &[u8];
         hdecode(&mut reader, &mut out).expect("io err");
+        println!("created decoded: {}", String::from_utf8_lossy(&out));
 
-        out.seek(std::io::SeekFrom::Start(0))
-            .expect("could not seek tmpfile");
-        let mut raw = OpenOptions::new().read(true).open(RAW).expect("cant read");
-        let mut raw_data = Vec::new();
-        raw.read_to_end(&mut raw_data).expect("cant read");
-        let mut out_data = Vec::new();
-        out.read_to_end(&mut out_data).expect("cant read tmpfile");
-
-        assert_eq!(raw_data, out_data, "decoding yielded incorrect data");
+        assert_eq!(RAW.as_bytes(), &out, "decoding yielded incorrect data");
     }
 
     #[test]
     fn encode() {
-        let mut out = tempfile().expect("temfile err");
-        let raw = OpenOptions::new().read(true).open(RAW).expect("file err");
-        let mut reader = BufReader::new(raw);
-        hencode(&mut reader, &mut out).expect("io err");
+        create_coded().unwrap();
     }
 }
