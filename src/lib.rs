@@ -87,7 +87,7 @@ pub fn hdecode(mut input: impl BufRead, output: impl Write) -> Result<(), Error>
             }
         };
 
-        debug_assert_eq!(output.write(&[byte])?, 1);
+        assert_eq!(output.write(&[byte])?, 1);
         if window.initialized() == padding {
             output.flush()?;
             return Ok(());
