@@ -1,5 +1,5 @@
 /target
-Cargo.lock
 /.vscode
 *.rxc
 lcov.info
+/result

@@ -51,11 +51,8 @@
         RUST_SRC_PATH = "${fenixChannel.rust-src}/lib/rustlib/src/rust/library";
       };
 
-      ## Once you actually want to build the project as a nix package,
-      ## you can do something like the following, but be aware that pnpm
-      ## and tauri may complicate things.
-      # packages.default = craneLib.buildPackage ( commonArgs // {
-      #   src = craneLib.cleanCargoSource ./.;
-      # });
+      packages.default = craneLib.buildPackage ( commonArgs // {
+        src = craneLib.cleanCargoSource ./.;
+      });
     });
 }
